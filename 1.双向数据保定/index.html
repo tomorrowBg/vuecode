@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app">hellow word</div>
+</body>
+</html>
+<script src="./dist/vue.js"></script>
+<script>
+    // umd 打包方式会给全局提供一个Vue
+    // vue2 响应式是 "借鉴了" mvvm 模式
+    let vm = new Vue({
+        el: '#app',
+        data () {
+            console.log(this, '这里指向window,需要call重定向this');
+            return {
+                msg: 'hellow word',
+                list: [1,2,3],
+                arr: [
+                    {
+                        item: 1
+                    }
+                ]
+            }
+        },
+        methods: {}
+    })
+    // console.log('vm', vm._data.arr.push({item: 2}));
+    // vue初次渲染 => 先初始化数据 => 将模板进行编译 => 变成render函数 => 生成虚拟节点, 把虚拟节点变成真是得dom => 放到页面
+    // vue 模板编译采用哪几种方式: 1.template 2.render 3. el 注意:必须要有el:(挂载根标签), 先执行render()然后template, 然后
+</script>

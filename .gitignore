@@ -1,0 +1,3 @@
+# dir 不需要提交的目录
+/1.双向数据保定/node_modules
+/2.创建ast语法树/node_modules
