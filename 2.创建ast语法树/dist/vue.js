@@ -243,10 +243,30 @@
   //<div id="app"></div>
 
   var startTagClose = /^\s*(\/?)>/; // 匹配标签结束的 >
+  // 遍历
+  // 创建ast语法树
+
+  function createASTElement(tag, attrs) {
+    //<div id="app"> hello {{msg}} <h></h></div>
+    return {
+      tag: tag,
+      // 元素 (div ,span)
+      attrs: attrs,
+      // 属性
+      children: [],
+      // 子节点
+      type: 1,
+      // 类型
+      parent: null // 是否有父元素
+
+    };
+  }
 
   function start(tag, attrs) {
     //开始标签
     console.log(tag, attrs, '开始的标签');
+    var element = createASTElement(tag, attrs);
+    console.log('element开始标签', element);
   }
 
   function charts(text) {
