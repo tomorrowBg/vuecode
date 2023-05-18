@@ -42,6 +42,65 @@
     return Constructor;
   }
 
+  function _slicedToArray(arr, i) {
+    return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest();
+  }
+
+  function _arrayWithHoles(arr) {
+    if (Array.isArray(arr)) return arr;
+  }
+
+  function _iterableToArrayLimit(arr, i) {
+    var _i = arr == null ? null : typeof Symbol !== "undefined" && arr[Symbol.iterator] || arr["@@iterator"];
+
+    if (_i == null) return;
+    var _arr = [];
+    var _n = true;
+    var _d = false;
+
+    var _s, _e;
+
+    try {
+      for (_i = _i.call(arr); !(_n = (_s = _i.next()).done); _n = true) {
+        _arr.push(_s.value);
+
+        if (i && _arr.length === i) break;
+      }
+    } catch (err) {
+      _d = true;
+      _e = err;
+    } finally {
+      try {
+        if (!_n && _i["return"] != null) _i["return"]();
+      } finally {
+        if (_d) throw _e;
+      }
+    }
+
+    return _arr;
+  }
+
+  function _unsupportedIterableToArray(o, minLen) {
+    if (!o) return;
+    if (typeof o === "string") return _arrayLikeToArray(o, minLen);
+    var n = Object.prototype.toString.call(o).slice(8, -1);
+    if (n === "Object" && o.constructor) n = o.constructor.name;
+    if (n === "Map" || n === "Set") return Array.from(o);
+    if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen);
+  }
+
+  function _arrayLikeToArray(arr, len) {
+    if (len == null || len > arr.length) len = arr.length;
+
+    for (var i = 0, arr2 = new Array(len); i < len; i++) arr2[i] = arr[i];
+
+    return arr2;
+  }
+
+  function _nonIterableRest() {
+    throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
+  }
+
   //重新写数组
   //(1) 获取原来的数组方法
   var oldArrayProtoMethods = Array.prototype; //（2）继承
@@ -217,6 +276,15 @@
     });
   } // data{}   (1) 对象  （2）数组    { a:{b:1},list:[1,2,3], arr:[{}]}
 
+  /*
+   * @Author: yyds白 tomorrowBg@163.com
+   * @Date: 2023-05-18 22:18:02
+   * @LastEditors: yyds白 tomorrowBg@163.com
+   * @LastEditTime: 2023-05-18 22:18:02
+   * @FilePath: \vue_code\2.创建ast语法树\src\compile\parseAst.js
+   * @Description: ast语法树解析
+   * Copyright (c) 2023 by ${git_name_email}, All Rights Reserved.
+   */
   //<div id="app"> hello {{msg}} <h></h></div>
   //ast语法树 {}    vnode {}
 
@@ -262,21 +330,54 @@
     };
   }
 
+  var root; // 根元素
+
+  var createParent; // 当前元素的父元素
+
+  var stack = []; // 数据解构 => 栈 <div id="app"> hello {{msg}} <h></h></div> , [] => 首先匹配到第一个开始标签<div id="app"> 将div添加进数组 [div] => 2. 匹配到<h> 开始标签 添加到数组, [div, h] => 3.匹配到</h> h 的结束标签 将 h从数组中删除, [div], 这样来回循环的数组中最后一个就是父元素 === 有问题
+
   function start(tag, attrs) {
     //开始标签
     console.log(tag, attrs, '开始的标签');
     var element = createASTElement(tag, attrs);
     console.log('element开始标签', element);
+
+    if (!root) {
+      root = element;
+    }
+
+    createParent = element;
+    stack.push(element);
+    console.log('stack', stack);
   }
 
   function charts(text) {
     //获取文本
-    console.log(text, '文本');
+    console.log(text, '文本'); // 空格
+
+    text = text.replace(/s/g, '');
+
+    if (text) {
+      createParent.children.push({
+        type: 3,
+        text: text
+      });
+    }
   }
 
   function end(tag) {
     //结束的标签
-    console.log(tag, '结束标签');
+    console.log(tag, '结束标签1', stack);
+    var element = stack.pop(); // 获取到最后一个元素
+
+    createParent = stack[stack.length - 1];
+
+    if (createParent) {
+      // 判断是否有闭合标签 </div>
+      // 元素得关闭
+      element.parent = createParent.tag;
+      createParent.children.push(element);
+    }
   }
 
   function parseHTML(html) {
@@ -286,12 +387,17 @@
       //判断标签 <>
       var textEnd = html.indexOf('<'); // 0
 
+      console.log('%c [ textEnd ]-66', 'font-size:13px; background:pink; color:#bf2c9f;', textEnd);
+
       if (textEnd === 0) {
         //标签
         //（1） 开始标签
         var startTagMatch = parseStartTag(); // 开始标签的内容 {}
 
+        console.log('startTagMatch', startTagMatch); // => {tagName: 'div', attrs: Array(2)}
+
         if (startTagMatch) {
+          console.log('2', 2);
           start(startTagMatch.tagName, startTagMatch.attrs);
           continue;
         } //结束标签 
@@ -299,21 +405,24 @@
 
         console.log(500);
         var endTagMatch = html.match(endTag);
+        console.log('endTagMatch结束标签', endTagMatch);
 
         if (endTagMatch) {
           advance(endTagMatch[0].length);
           end(endTagMatch[1]);
           continue;
         }
-      } //文本
+      }
 
+      console.log(600); //文本
 
       var text = void 0;
 
       if (textEnd > 0) {
         console.log(textEnd); //获取文本内容
 
-        text = html.substring(0, textEnd); // console.log(text)
+        text = html.substring(0, textEnd);
+        console.log(text);
       }
 
       if (text) {
@@ -325,9 +434,10 @@
 
     function parseStartTag() {
       //
+      console.log('1', 1);
       var start = html.match(startTagOpen); // 1结果  2false
 
-      console.log(start, 'start');
+      console.log(start, 'start'); // => ['<div', 'div', index: 0, input: '<div id="app"> hello {{msg}}</div>', groups: undefined]
 
       if (start) {
         //创建ast 语法树
@@ -336,7 +446,8 @@
           attrs: []
         }; //删除 开始标签 <div 属性>
 
-        advance(start[0].length); //属性
+        advance(start[0].length); // => <div  id="app"> hello {{msg}}</div> =>  id="app"> hello {{msg}}</div>
+        //属性
         //注意  属性有多个,需要遍历
         //注意 >
 
@@ -345,7 +456,9 @@
         var _end; // 结束标签
 
 
-        console.log('html.match(startTagClose)', html.match(startTagClose));
+        console.log('html.match(startTagClose)结束标签', html.match(startTagClose)); // => null
+
+        console.log('html.match(attribute)属性', html.match(attribute)); // => [' id="app"', 'id', '=', 'app', undefined, undefined, index: 0, input: ' id="app"> hello {{msg}}</div>', groups: undefined]
 
         while (!(_end = html.match(startTagClose)) && (attr = html.match(attribute))) {
           console.log(attr, 'attr'); // 属性
@@ -355,7 +468,8 @@
             name: attr[1],
             value: attr[3] || attr[4] || attr[5]
           });
-          advance(attr[0].length);
+          console.log('match', match);
+          advance(attr[0].length); // => value="12"> hello {{msg}}</div>
         }
 
         if (_end) {
@@ -367,15 +481,75 @@
     }
 
     function advance(n) {
-      html = html.substring(n); // console.log(html)
+      html = html.substring(n);
+      console.log(html, 'advance删除');
     }
+
+    console.log('root', root);
+    return root;
+  }
+
+  /**
+   * <div id="app" value="12"> hello {{msg}}<h1></h1></div>
+   * 变为一下解构
+   * render () { _c 解析标签(1.标签名. 2.属性, 3._v解析文本('hellow' + _s插值表达式就是变量(msg)), 如果有子元素继续直接_c(...))
+   *  return _c('div', {id: app}, _v('hellow' + _s(msg)), ,_c(...))
+   * }
+  */
+  // 处理属性
+  function genProps(attrs) {
+    var str = '';
+
+    for (var i = 0; i < attrs.length; i++) {
+      // [{name: 'id', value: 'app'}, {name: 'style', value: 'color: red; font-size: 20px'}]
+      var attr = attrs[i];
+      console.log('attr1', attr);
+
+      if (attr.name === 'style') {
+        (function () {
+          var obj = {};
+          attr.value.split(';').forEach(function (item) {
+            var _item$split = item.split(':'),
+                _item$split2 = _slicedToArray(_item$split, 2),
+                key = _item$split2[0],
+                val = _item$split2[1];
+
+            obj[key] = val;
+          });
+          attr.value = obj;
+        })();
+      } // 拼接
+
+
+      str += "".concat(attr.name, ":").concat(JSON.stringify(attr.value), ",");
+    } // str => {id:"app",style:{"color":" red"," font-size":" 20px"}}
+
+
+    return "{".concat(str.slice(0, -1), "}");
+  }
+
+  function generate(el) {
+    console.log('generateel', el); // 注意属性(行内属性中多个属性是用;分号连接得) attrs: [{name: 'id', value: 'app'}, {name: 'style', value: 'color: red; font-size: 20px'}]
+
+    var code = "_c(".concat(el.tag, ", ").concat(el.attrs.length ? "".concat(genProps(el.attrs)) : 'null', ")");
+    console.log('code', code);
   }
 
   function compileToFunction(el) {
-    console.log('el', el);
-    var ast = parseHTML(el);
-    console.log('ast', ast);
+    console.log('el', el); // 1.将html变成ast语法树
+
+    var ast = parseHTML(el); // console.log('ast', ast);
+    // 2.ast 语法树变成render 函数分为俩步: (1)ast语法树变成字符串 (2)字符串变成函数
+
+    generate(ast);
   }
+  /**
+   * <div id="app" value="12"> hello {{msg}}<h1></h1></div>
+   * 变为一下解构
+   * render () { _c 解析标签(1.标签名. 2.属性, 3._v解析文本('hellow' + _s插值表达式就是变量(msg)), 如果有子元素继续直接_c(...))
+   *  return _c('div', {id: app}, _v('hellow' + _s(msg)), ,_c(...))
+   * }
+  */
 
   /*
    * @Author: yyds白 11935851+yyds-white@user.noreply.gitee.com
